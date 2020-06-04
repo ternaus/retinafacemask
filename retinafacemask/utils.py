@@ -13,7 +13,4 @@ class PolyLR(_LRScheduler):
         super().__init__(optimizer, last_epoch)
 
     def get_lr(self):
-        return [
-            base_lr * (1 - float(self.last_epoch) / self.max_iter) ** self.power
-            for base_lr in self.base_lrs
-        ]
+        return [base_lr * (1 - float(self.last_epoch) / self.max_iter) ** self.power for base_lr in self.base_lrs]

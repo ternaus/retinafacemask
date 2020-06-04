@@ -49,13 +49,15 @@ class LandmarkHead(nn.Module):
 
 
 class RetinaFace(nn.Module):
-    def __init__(self,
-                 name: str,
-                 pretrained: bool,
-                 in_channels: int,
-                 return_layers: Dict[str, int],
-                 out_channels: int,
-                 phase="train"):
+    def __init__(
+        self,
+        name: str,
+        pretrained: bool,
+        in_channels: int,
+        return_layers: Dict[str, int],
+        out_channels: int,
+        phase: str = "train",
+    ) -> None:
         """
 
         Args:

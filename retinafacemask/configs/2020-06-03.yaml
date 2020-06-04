@@ -24,7 +24,6 @@ batch_size:  24
 model:
   type: retinafacemask.retinaface.RetinaFace
   name: Resnet50
-#  num_classes: 2
   pretrained: True
   return_layers: {"layer2": 1, "layer3": 2, "layer4": 3}
   in_channels: 256

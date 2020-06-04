@@ -38,21 +38,21 @@ class RetinaFaceMask(pl.LightningModule):
             priors = priorbox.forward()
             self.priors = priors.cuda()
 
-
-
-    def forward(self, batch) -> torch.Tensor:  # skipcq: PYL-W0221
+    def forward(self, batch: torch.Tensor) -> torch.Tensor:  # skipcq: PYL-W0221
         return self.model(batch)
 
     def train_dataloader(self):
         return DataLoader(
-            WiderFaceDetection(self.hparams["train_annotation_path"],
-                               preproc(self.hparams["prior_box"]["image_size"], self.hparams["rgb_mean"])),
+            WiderFaceDetection(
+                self.hparams["train_annotation_path"],
+                preproc(self.hparams["prior_box"]["image_size"], self.hparams["rgb_mean"]),
+            ),
             batch_size=self.hparams["val_parameters"]["batch_size"],
             num_workers=self.hparams["num_workers"],
             shuffle=False,
             pin_memory=True,
             drop_last=False,
-            collate_fn=detection_collate
+            collate_fn=detection_collate,
         )
 
     def configure_optimizers(self):
@@ -73,16 +73,18 @@ class RetinaFaceMask(pl.LightningModule):
 
         loss_localization, loss_classification, loss_landmarks = self.loss(out, self.priors, targets)
 
-        total_loss = self.loss_weights["localization"] * loss_localization + \
-                     self.loss_weights["classification"] * loss_classification + \
-                     self.loss_weights["landmarks"] * loss_landmarks
+        total_loss = (
+            self.loss_weights["localization"] * loss_localization
+            + self.loss_weights["classification"] * loss_classification
+            + self.loss_weights["landmarks"] * loss_landmarks
+        )
 
         logs = {
             "classification": loss_classification,
             "localization": loss_localization,
             "landmarks": loss_landmarks,
             "train_loss": total_loss,
-            "lr": self._get_current_lr()
+            "lr": self._get_current_lr(),
         }
 
         return {"loss": total_loss, "log": logs}
@@ -90,8 +92,6 @@ class RetinaFaceMask(pl.LightningModule):
     def _get_current_lr(self) -> torch.Tensor:
         lr = [x["lr"] for x in self.optimizers[0].param_groups][0]
         return torch.Tensor([lr])[0].cuda()
-
-
 
 
 def main():

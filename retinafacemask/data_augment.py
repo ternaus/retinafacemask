@@ -48,7 +48,7 @@ def _crop(image, boxes, labels, landm, img_dim):
         if boxes_t.shape[0] == 0:
             continue
 
-        image_t = image[roi[1]: roi[3], roi[0]: roi[2]]
+        image_t = image[roi[1] : roi[3], roi[0] : roi[2]]
 
         boxes_t[:, :2] = np.maximum(boxes_t[:, :2], roi[:2])
         boxes_t[:, :2] -= roi[:2]
@@ -156,7 +156,7 @@ def _expand(image, boxes, fill, p):
     boxes_t[:, 2:] += (left, top)
     expand_image = np.empty((h, w, depth), dtype=image.dtype)
     expand_image[:, :] = fill
-    expand_image[top: top + height, left: left + width] = image
+    expand_image[top : top + height, left : left + width] = image
     image = expand_image
 
     return image, boxes_t
@@ -191,7 +191,7 @@ def _pad_to_square(image, rgb_mean, pad_image_flag):
     long_side = max(width, height)
     image_t = np.empty((long_side, long_side, 3), dtype=image.dtype)
     image_t[:, :] = rgb_mean
-    image_t[0: 0 + height, 0: 0 + width] = image
+    image_t[0 : 0 + height, 0 : 0 + width] = image
     return image_t
 
 
@@ -204,7 +204,7 @@ def _resize_subtract_mean(image, insize, rgb_mean):
     return image.transpose(2, 0, 1)
 
 
-class preproc(object):
+class preproc:
     def __init__(self, img_dim, rgb_means):
         self.img_dim = img_dim
         self.rgb_means = rgb_means

@@ -1,11 +1,9 @@
+from typing import Tuple
+
 import cv2
 import numpy as np
-import os
-import os.path
-import sys
 import torch
 import torch.utils.data as data
-from typing import Tuple
 
 
 class WiderFaceDetection(data.Dataset):
@@ -39,7 +37,7 @@ class WiderFaceDetection(data.Dataset):
     def __len__(self):
         return len(self.imgs_path)
 
-    def __getitem__(self, index: int):
+    def __getitem__(self, index: int) -> Tuple[torch.Tensor, np.ndarray]:
         img = cv2.imread(self.imgs_path[index])
         print(self.imgs_path[index])
         height, width = img.shape[:2]

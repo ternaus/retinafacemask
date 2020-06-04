@@ -4,13 +4,9 @@ from math import ceil
 import torch
 
 
-class PriorBox(object):
-    def __init__(self,
-                 min_sizes,
-                 steps,
-                 clip,
-                 image_size=None):
-        super(PriorBox, self).__init__()
+class PriorBox:
+    def __init__(self, min_sizes, steps, clip, image_size=None):
+        super().__init__()
         self.min_sizes = min_sizes
         self.steps = steps
         self.clip = clip

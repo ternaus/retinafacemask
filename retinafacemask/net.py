@@ -53,10 +53,10 @@ class SSH(nn.Module):
         self.conv7X7_2 = conv_bn(out_channel // 4, out_channel // 4, stride=1, leaky=leaky)
         self.conv7x7_3 = conv_bn_no_relu(out_channel // 4, out_channel // 4, stride=1)
 
-    def forward(self, input: torch.Tensor):
-        conv3X3 = self.conv3X3(input)
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        conv3X3 = self.conv3X3(x)
 
-        conv5X5_1 = self.conv5X5_1(input)
+        conv5X5_1 = self.conv5X5_1(x)
         conv5X5 = self.conv5X5_2(conv5X5_1)
 
         conv7X7_2 = self.conv7X7_2(conv5X5_1)
@@ -70,7 +70,7 @@ class SSH(nn.Module):
 class FPN(nn.Module):
     def __init__(self, in_channels_list: List[int], out_channels: int) -> None:
         super().__init__()
-        leaky = 0
+        leaky = 0.0
         if out_channels <= 64:
             leaky = 0.1
 

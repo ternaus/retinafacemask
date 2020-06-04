@@ -29,17 +29,17 @@ class MultiBoxLoss(nn.Module):
     """
 
     def __init__(
-            self,
-            num_classes: int,
-            overlap_thresh: float,
-            prior_for_matching: bool,
-            bkg_label: int,
-            neg_mining: bool,
-            neg_pos: int,
-            neg_overlap,
-            encode_target,
-    ):
-        super(MultiBoxLoss, self).__init__()
+        self,
+        num_classes: int,
+        overlap_thresh: float,
+        prior_for_matching: bool,
+        bkg_label: int,
+        neg_mining: bool,
+        neg_pos: int,
+        neg_overlap: float,
+        encode_target: bool,
+    ) -> None:
+        super().__init__()
         self.num_classes = num_classes
         self.threshold = overlap_thresh
         self.background_label = bkg_label
