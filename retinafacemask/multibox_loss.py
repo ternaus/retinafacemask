@@ -38,6 +38,7 @@ class MultiBoxLoss(nn.Module):
         neg_pos: int,
         neg_overlap: float,
         encode_target: bool,
+        priors: torch.Tensor,
     ) -> None:
         super().__init__()
         self.num_classes = num_classes
@@ -50,7 +51,9 @@ class MultiBoxLoss(nn.Module):
         self.neg_overlap = neg_overlap
         self.variance = [0.1, 0.2]
 
-    def forward(self, predictions, priors, targets):
+        self.priors = priors
+
+    def forward(self, predictions, targets):
         """Multibox Loss
         Args:
             predictions (tuple): A tuple containing loc preds, conf preds,
@@ -64,26 +67,24 @@ class MultiBoxLoss(nn.Module):
         """
 
         loc_data, conf_data, landm_data = predictions
-        priors = priors
+
+        priors = self.priors.to(targets[0].device)
         num = loc_data.size(0)
         num_priors = priors.size(0)
 
         # match priors (default boxes) and ground truth boxes
-        loc_t = torch.Tensor(num, num_priors, 4)
-        landm_t = torch.Tensor(num, num_priors, 10)
-        conf_t = torch.LongTensor(num, num_priors)
+        loc_t = torch.Tensor(num, num_priors, 4).to(targets[0].device)
+        landm_t = torch.Tensor(num, num_priors, 10).to(targets[0].device)
+        conf_t = torch.LongTensor(num, num_priors).to(targets[0].device)
         for idx in range(num):
             truths = targets[idx][:, :4].data
             labels = targets[idx][:, -1].data
             landms = targets[idx][:, 4:14].data
             defaults = priors.data
+
             match(self.threshold, truths, defaults, self.variance, labels, landms, loc_t, conf_t, landm_t, idx)
 
-        loc_t = loc_t.cuda()
-        conf_t = conf_t.cuda()
-        landm_t = landm_t.cuda()
-
-        zeros = torch.tensor(0).cuda()
+        zeros = torch.tensor(0)
         # landm Loss (Smooth L1)
         # Shape: [batch,num_priors,10]
         pos1 = conf_t > zeros

@@ -4,12 +4,13 @@ from pathlib import Path
 import apex
 import pytorch_lightning as pl
 import torch
+import yaml
 from iglovikov_helper_functions.config_parsing.utils import object_from_dict
 from torch.utils.data import DataLoader
+
 from retinafacemask.data_augment import Preproc
 from retinafacemask.dataset import WiderFaceDetection, detection_collate
-import yaml
-import os
+from retinafacemask.prior_box import priorbox
 
 
 def get_args():
@@ -30,13 +31,16 @@ class RetinaFaceMask(pl.LightningModule):
         if hparams["sync_bn"]:
             self.model = apex.parallel.convert_syncbn_model(self.model)
 
-        self.loss = object_from_dict(self.hparams["loss"])
         self.loss_weights = self.hparams["loss_weights"]
 
-        priorbox = object_from_dict(self.hparams["prior_box"])
-        with torch.no_grad():
-            priors = priorbox.forward()
-            self.priors = priors.cuda()
+        # priorbox = object_from_dict(self.hparams["prior_box"])
+        priors = priorbox(
+            min_sizes=[[16, 32], [64, 128], [256, 512]], steps=[8, 16, 32], clip=False, image_size=[840, 840]
+        )
+        # with torch.no_grad():
+        #     priors = priorbox.forward()
+
+        self.loss = object_from_dict(self.hparams["loss"], priors=priors)
 
     def forward(self, batch: torch.Tensor) -> torch.Tensor:  # skipcq: PYL-W0221
         return self.model(batch)
@@ -71,8 +75,13 @@ class RetinaFaceMask(pl.LightningModule):
         images, targets = batch
 
         out = self.forward(images)
+        #
+        # print()
+        # print(out[0].device)
+        # print(targets[0].device)
+        # print(self.priors.device)
 
-        loss_localization, loss_classification, loss_landmarks = self.loss(out, self.priors, targets)
+        loss_localization, loss_classification, loss_landmarks = self.loss(out, targets)
 
         total_loss = (
             self.loss_weights["localization"] * loss_localization

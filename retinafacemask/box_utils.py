@@ -43,7 +43,7 @@ def intersect(box_a: torch.Tensor, box_b: torch.Tensor) -> torch.Tensor:
     return inter[:, :, 0] * inter[:, :, 1]
 
 
-def jaccard(box_a, box_b):
+def jaccard(box_a: torch.Tensor, box_b: torch.Tensor) -> torch.Tensor:
     """Compute the jaccard overlap of two sets of boxes.  The jaccard overlap
     is simply the intersection over union of two boxes.  Here we operate on
     ground truth boxes and default boxes.
@@ -60,19 +60,6 @@ def jaccard(box_a, box_b):
     area_b = ((box_b[:, 2] - box_b[:, 0]) * (box_b[:, 3] - box_b[:, 1])).unsqueeze(0).expand_as(inter)  # [A,B]
     union = area_a + area_b - inter
     return inter / union  # [A,B]
-
-
-def matrix_iou(a, b):
-    """
-    return iou of a and b, numpy version for data augenmentation
-    """
-    lt = np.maximum(a[:, np.newaxis, :2], b[:, :2])
-    rb = np.minimum(a[:, np.newaxis, 2:], b[:, 2:])
-
-    area_i = np.prod(rb - lt, axis=2) * (lt < rb).all(axis=2)
-    area_a = np.prod(a[:, 2:] - a[:, :2], axis=1)
-    area_b = np.prod(b[:, 2:] - b[:, :2], axis=1)
-    return area_i / (area_a[:, np.newaxis] + area_b - area_i)
 
 
 def matrix_iof(a, b):
