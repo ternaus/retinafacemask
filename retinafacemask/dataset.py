@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 import torch
 import torch.utils.data as data
-
+from iglovikov_helper_functions.utils.image_utils import load_rgb
 from retinafacemask.data_augment import Preproc
 
 
@@ -24,14 +24,9 @@ class WiderFaceDetection(data.Dataset):
     def __getitem__(self, index: int) -> Tuple[torch.Tensor, np.ndarray]:
         labels = self.labels[index]
         file_name = labels["file_name"]
-        image = cv2.imread(str(self.image_path / file_name))
+        image = load_rgb(self.image_path / file_name)
 
-        # height, width = image.shape[:2]
-
-        # labels = self.words[index]
         annotations = np.zeros((0, 15))
-        # if len(labels["annotations"]) == 0:
-        #     return annotations
 
         for idx, label in enumerate(labels["annotations"]):
             annotation = np.zeros((1, 15))

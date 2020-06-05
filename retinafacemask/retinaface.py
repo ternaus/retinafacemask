@@ -29,7 +29,7 @@ class BboxHead(nn.Module):
         super().__init__()
         self.conv1x1 = nn.Conv2d(in_channels, num_anchors * 4, kernel_size=(1, 1), stride=1, padding=0)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         out = self.conv1x1(x)
         out = out.permute(0, 2, 3, 1).contiguous()
         return out.view(out.shape[0], -1, 4)
@@ -63,20 +63,6 @@ class RetinaFace(nn.Module):
         """
         super().__init__()
         self.phase = phase
-        # backbone = None
-        # if name == "mobilenet0.25":
-        #     backbone = MobileNetV1()
-        #     if cfg["pretrain"]:
-        #         checkpoint = torch.load("./weights/mobilenetV1X0.25_pretrain.tar", map_location=torch.device("cpu"))
-        #         from collections import OrderedDict
-        #
-        #         new_state_dict = OrderedDict()
-        #         for k, v in checkpoint["state_dict"].items():
-        #             name = k[7:]  # remove module.
-        #             new_state_dict[name] = v
-        #         # load params
-        #         backbone.load_state_dict(new_state_dict)
-        # elif name == "Resnet50":
 
         if name == "Resnet50":
             backbone = models.resnet50(pretrained=pretrained)
@@ -90,7 +76,6 @@ class RetinaFace(nn.Module):
             in_channels_stage2 * 4,
             in_channels_stage2 * 8,
         ]
-        out_channels = out_channels
         self.fpn = FPN(in_channels_list, out_channels)
         self.ssh1 = SSH(out_channels, out_channels)
         self.ssh2 = SSH(out_channels, out_channels)

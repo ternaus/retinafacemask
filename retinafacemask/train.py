@@ -11,6 +11,8 @@ from torch.utils.data import DataLoader
 from retinafacemask.data_augment import Preproc
 from retinafacemask.dataset import WiderFaceDetection, detection_collate
 from retinafacemask.prior_box import priorbox
+from pytorch_lightning.logging import NeptuneLogger
+import os
 
 
 def get_args():
@@ -110,13 +112,13 @@ def main():
     with open(args.config_path) as f:
         hparams = yaml.load(f, Loader=yaml.SafeLoader)
 
-    # neptune_logger = NeptuneLogger(
-    #     api_key=os.environ["NEPTUNE_API_TOKEN"],
-    #     project_name=hparams["project_name"],
-    #     experiment_name=f"{hparams['experiment_name']}",  # Optional,
-    #     tags=["pytorch-lightning", "mlp"],  # Optional,
-    #     upload_source_files=[],
-    # )
+    neptune_logger = NeptuneLogger(
+        api_key=os.environ["NEPTUNE_API_TOKEN"],
+        project_name=hparams["project_name"],
+        experiment_name=f"{hparams['experiment_name']}",  # Optional,
+        tags=["pytorch-lightning", "mlp"],  # Optional,
+        upload_source_files=[],
+    )
 
     pipeline = RetinaFaceMask(hparams)
 
@@ -124,7 +126,7 @@ def main():
 
     trainer = object_from_dict(
         hparams["trainer"],
-        # logger=neptune_logger,
+        logger=neptune_logger,
         checkpoint_callback=object_from_dict(hparams["checkpoint_callback"]),
     )
 

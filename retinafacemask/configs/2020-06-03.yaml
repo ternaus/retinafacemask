@@ -14,7 +14,7 @@ sync_bn: True
 num_workers: 16
 experiment_name: "2020-06-03"
 
-rgb_mean: [104, 117, 123]  # bgr order
+rgb_mean: [0.485, 0.456, 0.406]
 num_classes: 2
 
 img_dim:

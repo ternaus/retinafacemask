@@ -1,6 +1,7 @@
 import random
+from typing import Tuple
 
-import cv2
+import albumentations as albu
 import numpy as np
 
 from retinafacemask.box_utils import matrix_iof
@@ -78,66 +79,6 @@ def _crop(image, boxes, labels, landm, img_dim):
     return image, boxes, labels, landm, pad_image_flag
 
 
-def _distort(image):
-    def _convert(image, alpha=1, beta=0):
-        tmp = image.astype(float) * alpha + beta
-        tmp[tmp < 0] = 0
-        tmp[tmp > 255] = 255
-        image[:] = tmp
-
-    image = image.copy()
-
-    if random.randrange(2):
-
-        # brightness distortion
-        if random.randrange(2):
-            _convert(image, beta=random.uniform(-32, 32))
-
-        # contrast distortion
-        if random.randrange(2):
-            _convert(image, alpha=random.uniform(0.5, 1.5))
-
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-
-        # saturation distortion
-        if random.randrange(2):
-            _convert(image[:, :, 1], alpha=random.uniform(0.5, 1.5))
-
-        # hue distortion
-        if random.randrange(2):
-            tmp = image[:, :, 0].astype(int) + random.randint(-18, 18)
-            tmp %= 180
-            image[:, :, 0] = tmp
-
-        image = cv2.cvtColor(image, cv2.COLOR_HSV2BGR)
-
-    else:
-
-        # brightness distortion
-        if random.randrange(2):
-            _convert(image, beta=random.uniform(-32, 32))
-
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-
-        # saturation distortion
-        if random.randrange(2):
-            _convert(image[:, :, 1], alpha=random.uniform(0.5, 1.5))
-
-        # hue distortion
-        if random.randrange(2):
-            tmp = image[:, :, 0].astype(int) + random.randint(-18, 18)
-            tmp %= 180
-            image[:, :, 0] = tmp
-
-        image = cv2.cvtColor(image, cv2.COLOR_HSV2BGR)
-
-        # contrast distortion
-        if random.randrange(2):
-            _convert(image, alpha=random.uniform(0.5, 1.5))
-
-    return image
-
-
 def _expand(image, boxes, fill, p):
     if random.randrange(2):
         return image, boxes
@@ -162,8 +103,8 @@ def _expand(image, boxes, fill, p):
     return image, boxes_t
 
 
-def _mirror(image, boxes, landms):
-    _, width, _ = image.shape
+def _mirror(image: np.ndarray, boxes: np.ndarray, landms: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    width = image.shape[1]
     if random.randrange(2):
         image = image[:, ::-1]
         boxes = boxes.copy()
@@ -191,17 +132,8 @@ def _pad_to_square(image, rgb_mean, pad_image_flag):
     long_side = max(width, height)
     image_t = np.empty((long_side, long_side, 3), dtype=image.dtype)
     image_t[:, :] = rgb_mean
-    image_t[0 : 0 + height, 0 : 0 + width] = image
+    image_t[0:height, 0:width] = image
     return image_t
-
-
-def _resize_subtract_mean(image, insize, rgb_mean):
-    interp_methods = [cv2.INTER_LINEAR, cv2.INTER_CUBIC, cv2.INTER_AREA, cv2.INTER_NEAREST, cv2.INTER_LANCZOS4]
-    interp_method = interp_methods[random.randrange(5)]
-    image = cv2.resize(image, (insize, insize), interpolation=interp_method)
-    image = image.astype(np.float32)
-    image = image - rgb_mean
-    return image.transpose(2, 0, 1)
 
 
 class Preproc:
@@ -218,14 +150,9 @@ class Preproc:
         landmarks = targets[:, 4:-1].copy()
 
         image_t, boxes_t, labels_t, landm_t, pad_image_flag = _crop(image, boxes, labels, landmarks, self.img_dim)
-        image_t = _distort(image_t)
         image_t = _pad_to_square(image_t, self.rgb_means, pad_image_flag)
         image_t, boxes_t, landm_t = _mirror(image_t, boxes_t, landm_t)
         height, width = image_t.shape[:2]
-        # image_t = _resize_subtract_mean(image_t, self.img_dim, self.rgb_means)
-
-        image_t = cv2.resize(image, (self.img_dim, self.img_dim), interpolation=cv2.INTER_LINEAR)
-        image_t = image_t.transpose(2, 0, 1)
 
         boxes_t[:, 0::2] = boxes_t[:, 0::2] / width
         boxes_t[:, 1::2] = boxes_t[:, 1::2] / height
@@ -235,5 +162,16 @@ class Preproc:
 
         labels_t = np.expand_dims(labels_t, 1)
         targets_t = np.hstack((boxes_t, landm_t, labels_t))
+
+        image_t = albu.Compose(
+            [
+                albu.RandomBrightnessContrast(brightness_limit=0.125, contrast_limit=(0.5, 1.5), p=0.5),
+                albu.HueSaturationValue(hue_shift_limit=18, val_shift_limit=0, p=0.5),
+                albu.Resize(height=self.img_dim, width=self.img_dim, p=1),
+                albu.Normalize(p=1),
+            ]
+        )(image=image_t)["image"]
+
+        image_t = image_t.transpose(2, 0, 1)
 
         return image_t, targets_t
