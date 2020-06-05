@@ -45,7 +45,9 @@ def conv_dw(inp: int, oup: int, stride: int, leaky: float = 0.1) -> nn.Sequentia
 class SSH(nn.Module):
     def __init__(self, in_channel: int, out_channel: int) -> None:
         super().__init__()
-        assert out_channel % 4 == 0
+        if out_channel % 4 != 0:
+            raise ValueError(f"Expect out channel % 4 == 0, but we got {out_channel % 4}")
+
         leaky: float = 0
         if out_channel <= 64:
             leaky = 0.1
@@ -86,7 +88,6 @@ class FPN(nn.Module):
         self.merge2 = conv_bn(out_channels, out_channels, leaky=leaky)
 
     def forward(self, x: torch.tensor) -> List[torch.Tensor]:
-        # names = list(input.keys())
         x = list(x.values())
 
         output1 = self.output1(x[0])
