@@ -6,7 +6,7 @@ import pytorch_lightning as pl
 import torch
 from iglovikov_helper_functions.config_parsing.utils import object_from_dict
 from torch.utils.data import DataLoader
-from retinafacemask.data_augment import preproc
+from retinafacemask.data_augment import Preproc
 from retinafacemask.dataset import WiderFaceDetection, detection_collate
 import yaml
 import os
@@ -44,10 +44,11 @@ class RetinaFaceMask(pl.LightningModule):
     def train_dataloader(self):
         return DataLoader(
             WiderFaceDetection(
-                self.hparams["train_annotation_path"],
-                preproc(self.hparams["prior_box"]["image_size"], self.hparams["rgb_mean"]),
+                label_path=self.hparams["train_annotation_path"],
+                image_path=self.hparams["train_image_path"],
+                preproc=Preproc(self.hparams["prior_box"]["image_size"][0], self.hparams["rgb_mean"]),
             ),
-            batch_size=self.hparams["val_parameters"]["batch_size"],
+            batch_size=self.hparams["train_parameters"]["batch_size"],
             num_workers=self.hparams["num_workers"],
             shuffle=False,
             pin_memory=True,
@@ -67,7 +68,7 @@ class RetinaFaceMask(pl.LightningModule):
 
     # skipcq: PYL-W0613, PYL-W0221
     def training_step(self, batch, batch_idx):
-        images, targets = next(batch)
+        images, targets = batch
 
         out = self.forward(images)
 

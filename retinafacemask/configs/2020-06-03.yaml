@@ -6,8 +6,8 @@ project_name: "ternaus/retinafacemask"
 train_image_path: /home/vladimir/workspace/data3/WiderFace/WIDER_train/images
 val_image_path: /home/vladimir/workspace/data3/WiderFace/WIDER_val/images
 
-train_annotation_path: /home/vladimir/workspace/data3/WiderFace/train/label.txt
-val_annotation_path: /home/vladimir/workspace/data3/WiderFace/val/label.txt
+train_annotation_path: /home/vladimir/workspace/data3/WiderFace/train/label.json
+val_annotation_path: /home/vladimir/workspace/data3/WiderFace/val/label.json
 
 sync_bn: True
 
@@ -19,7 +19,6 @@ num_classes: 2
 
 img_dim:
 num_gpu: 2
-batch_size:  24
 
 model:
   type: retinafacemask.retinaface.RetinaFace
@@ -41,7 +40,7 @@ trainer:
   type: pytorch_lightning.Trainer
   early_stop_callback: False
   default_save_path: ./
-  gpus: [0]
+  gpus: 1
   use_amp: True
   amp_level: O1
   max_epochs: 100
@@ -58,7 +57,7 @@ scheduler:
   max_iter: 100
 
 train_parameters:
-  batch_size: 24
+  batch_size: 8
 
 checkpoint_callback:
   type: pytorch_lightning.callbacks.ModelCheckpoint
@@ -70,7 +69,6 @@ checkpoint_callback:
 
 val_parameters:
   batch_size: 24
-
 
 loss:
   type: retinafacemask.multibox_loss.MultiBoxLoss

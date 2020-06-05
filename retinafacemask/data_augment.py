@@ -7,7 +7,7 @@ from retinafacemask.box_utils import matrix_iof
 
 
 def _crop(image, boxes, labels, landm, img_dim):
-    height, width, _ = image.shape
+    height, width = image.shape[:2]
     pad_image_flag = True
 
     for _ in range(250):
@@ -51,9 +51,9 @@ def _crop(image, boxes, labels, landm, img_dim):
         image_t = image[roi[1] : roi[3], roi[0] : roi[2]]
 
         boxes_t[:, :2] = np.maximum(boxes_t[:, :2], roi[:2])
-        boxes_t[:, :2] -= roi[:2]
+        boxes_t[:, :2] = boxes_t[:, :2] - roi[:2]
         boxes_t[:, 2:] = np.minimum(boxes_t[:, 2:], roi[2:])
-        boxes_t[:, 2:] -= roi[:2]
+        boxes_t[:, 2:] = boxes_t[:, 2:] - roi[:2]
 
         # landm
         landms_t[:, :, :2] = landms_t[:, :, :2] - roi[:2]
@@ -187,7 +187,7 @@ def _mirror(image, boxes, landms):
 def _pad_to_square(image, rgb_mean, pad_image_flag):
     if not pad_image_flag:
         return image
-    height, width, _ = image.shape
+    height, width = image.shape[:2]
     long_side = max(width, height)
     image_t = np.empty((long_side, long_side, 3), dtype=image.dtype)
     image_t[:, :] = rgb_mean
@@ -200,11 +200,11 @@ def _resize_subtract_mean(image, insize, rgb_mean):
     interp_method = interp_methods[random.randrange(5)]
     image = cv2.resize(image, (insize, insize), interpolation=interp_method)
     image = image.astype(np.float32)
-    image -= rgb_mean
+    image = image - rgb_mean
     return image.transpose(2, 0, 1)
 
 
-class preproc:
+class Preproc:
     def __init__(self, img_dim, rgb_means):
         self.img_dim = img_dim
         self.rgb_means = rgb_means
@@ -215,19 +215,23 @@ class preproc:
 
         boxes = targets[:, :4].copy()
         labels = targets[:, -1].copy()
-        landm = targets[:, 4:-1].copy()
+        landmarks = targets[:, 4:-1].copy()
 
-        image_t, boxes_t, labels_t, landm_t, pad_image_flag = _crop(image, boxes, labels, landm, self.img_dim)
+        image_t, boxes_t, labels_t, landm_t, pad_image_flag = _crop(image, boxes, labels, landmarks, self.img_dim)
         image_t = _distort(image_t)
         image_t = _pad_to_square(image_t, self.rgb_means, pad_image_flag)
         image_t, boxes_t, landm_t = _mirror(image_t, boxes_t, landm_t)
         height, width = image_t.shape[:2]
-        image_t = _resize_subtract_mean(image_t, self.img_dim, self.rgb_means)
-        boxes_t[:, 0::2] /= width
-        boxes_t[:, 1::2] /= height
+        # image_t = _resize_subtract_mean(image_t, self.img_dim, self.rgb_means)
 
-        landm_t[:, 0::2] /= width
-        landm_t[:, 1::2] /= height
+        image_t = cv2.resize(image, (self.img_dim, self.img_dim), interpolation=cv2.INTER_LINEAR)
+        image_t = image_t.transpose(2, 0, 1)
+
+        boxes_t[:, 0::2] = boxes_t[:, 0::2] / width
+        boxes_t[:, 1::2] = boxes_t[:, 1::2] / height
+
+        landm_t[:, 0::2] = landm_t[:, 0::2] / width
+        landm_t[:, 1::2] = landm_t[:, 1::2] / height
 
         labels_t = np.expand_dims(labels_t, 1)
         targets_t = np.hstack((boxes_t, landm_t, labels_t))

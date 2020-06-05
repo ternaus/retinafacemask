@@ -12,10 +12,10 @@ from typing import Dict, Tuple
 
 
 class ClassHead(nn.Module):
-    def __init__(self, inchannels: int = 512, num_anchors: int = 3) -> None:
+    def __init__(self, in_channels: int = 512, num_anchors: int = 3) -> None:
         super().__init__()
         self.num_anchors = num_anchors
-        self.conv1x1 = nn.Conv2d(inchannels, self.num_anchors * 2, kernel_size=(1, 1), stride=1, padding=0)
+        self.conv1x1 = nn.Conv2d(in_channels, self.num_anchors * 2, kernel_size=(1, 1), stride=1, padding=0)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         out = self.conv1x1(x)
@@ -32,7 +32,6 @@ class BboxHead(nn.Module):
     def forward(self, x):
         out = self.conv1x1(x)
         out = out.permute(0, 2, 3, 1).contiguous()
-
         return out.view(out.shape[0], -1, 4)
 
 
@@ -44,7 +43,6 @@ class LandmarkHead(nn.Module):
     def forward(self, x):
         out = self.conv1x1(x)
         out = out.permute(0, 2, 3, 1).contiguous()
-
         return out.view(out.shape[0], -1, 10)
 
 
