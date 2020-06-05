@@ -85,13 +85,13 @@ class FPN(nn.Module):
         self.merge1 = conv_bn(out_channels, out_channels, leaky=leaky)
         self.merge2 = conv_bn(out_channels, out_channels, leaky=leaky)
 
-    def forward(self, input: torch.tensor) -> List[torch.Tensor]:
+    def forward(self, x: torch.tensor) -> List[torch.Tensor]:
         # names = list(input.keys())
-        input = list(input.values())
+        x = list(x.values())
 
-        output1 = self.output1(input[0])
-        output2 = self.output2(input[1])
-        output3 = self.output3(input[2])
+        output1 = self.output1(x[0])
+        output2 = self.output2(x[1])
+        output3 = self.output3(x[2])
 
         up3 = F.interpolate(output3, size=[output2.size(2), output2.size(3)], mode="nearest")
         output2 = output2 + up3
@@ -103,38 +103,3 @@ class FPN(nn.Module):
 
         out = [output1, output2, output3]
         return out
-
-
-#
-#
-# class MobileNetV1(nn.Module):
-#     def __init__(self):
-#         super().__init__()
-#         self.stage1 = nn.Sequential(
-#             conv_bn(3, 8, 2, leaky=0.1),  # 3
-#             conv_dw(8, 16, 1),  # 7
-#             conv_dw(16, 32, 2),  # 11
-#             conv_dw(32, 32, 1),  # 19
-#             conv_dw(32, 64, 2),  # 27
-#             conv_dw(64, 64, 1),  # 43
-#         )
-#         self.stage2 = nn.Sequential(
-#             conv_dw(64, 128, 2),  # 43 + 16 = 59
-#             conv_dw(128, 128, 1),  # 59 + 32 = 91
-#             conv_dw(128, 128, 1),  # 91 + 32 = 123
-#             conv_dw(128, 128, 1),  # 123 + 32 = 155
-#             conv_dw(128, 128, 1),  # 155 + 32 = 187
-#             conv_dw(128, 128, 1),  # 187 + 32 = 219
-#         )
-#         self.stage3 = nn.Sequential(conv_dw(128, 256, 2), conv_dw(256, 256, 1), )  # 219 +3 2 = 241  # 241 + 64 = 301
-#         self.avg = nn.AdaptiveAvgPool2d((1, 1))
-#         self.fc = nn.Linear(256, 1000)
-#
-#     def forward(self, x: torch.Tensor) -> torch.Tensor:
-#         x = self.stage1(x)
-#         x = self.stage2(x)
-#         x = self.stage3(x)
-#         x = self.avg(x)
-#         x = x.view(-1, 256)
-#         return self.fc(x)
-#

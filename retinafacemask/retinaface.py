@@ -2,13 +2,15 @@
 from https://github.com/ternaus/Pytorch_Retinaface/blob/master/models/retinaface.py
 """
 
+from typing import Dict, Tuple
+
 import torch
 import torch.nn.functional as F
-import torchvision.models as models
-from retinafacemask.net import FPN, SSH
 from torch import nn
+from torchvision import models
 from torchvision.models import _utils
-from typing import Dict, Tuple
+
+from retinafacemask.net import FPN, SSH
 
 
 class ClassHead(nn.Module):
@@ -20,7 +22,6 @@ class ClassHead(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         out = self.conv1x1(x)
         out = out.permute(0, 2, 3, 1).contiguous()
-
         return out.view(out.shape[0], -1, 2)
 
 
@@ -40,7 +41,7 @@ class LandmarkHead(nn.Module):
         super().__init__()
         self.conv1x1 = nn.Conv2d(in_channels, num_anchors * 10, kernel_size=(1, 1), stride=1, padding=0)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         out = self.conv1x1(x)
         out = out.permute(0, 2, 3, 1).contiguous()
         return out.view(out.shape[0], -1, 10)
@@ -88,14 +89,14 @@ class RetinaFace(nn.Module):
     @staticmethod
     def _make_class_head(fpn_num: int = 3, in_channels: int = 64, anchor_num: int = 2) -> nn.ModuleList:
         classhead = nn.ModuleList()
-        for i in range(fpn_num):
+        for _ in range(fpn_num):
             classhead.append(ClassHead(in_channels, anchor_num))
         return classhead
 
     @staticmethod
     def _make_bbox_head(fpn_num: int = 3, in_channels: int = 64, anchor_num: int = 2) -> nn.ModuleList:
         bboxhead = nn.ModuleList()
-        for i in range(fpn_num):
+        for _ in range(fpn_num):
             bboxhead.append(BboxHead(in_channels, anchor_num))
         return bboxhead
 

@@ -2,11 +2,11 @@ import json
 from pathlib import Path
 from typing import Tuple, Optional
 
-import cv2
 import numpy as np
 import torch
-import torch.utils.data as data
 from iglovikov_helper_functions.utils.image_utils import load_rgb
+from torch.utils import data
+
 from retinafacemask.data_augment import Preproc
 
 
@@ -28,7 +28,7 @@ class WiderFaceDetection(data.Dataset):
 
         annotations = np.zeros((0, 15))
 
-        for idx, label in enumerate(labels["annotations"]):
+        for label in labels["annotations"]:
             annotation = np.zeros((1, 15))
             # bbox
             annotation[0, 0] = label["x_min"]

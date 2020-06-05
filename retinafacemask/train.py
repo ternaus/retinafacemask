@@ -1,4 +1,5 @@
 import argparse
+import os
 from pathlib import Path
 
 import apex
@@ -6,13 +7,12 @@ import pytorch_lightning as pl
 import torch
 import yaml
 from iglovikov_helper_functions.config_parsing.utils import object_from_dict
+from pytorch_lightning.logging import NeptuneLogger
 from torch.utils.data import DataLoader
 
 from retinafacemask.data_augment import Preproc
 from retinafacemask.dataset import WiderFaceDetection, detection_collate
 from retinafacemask.prior_box import priorbox
-from pytorch_lightning.logging import NeptuneLogger
-import os
 
 
 def get_args():
@@ -77,11 +77,6 @@ class RetinaFaceMask(pl.LightningModule):
         images, targets = batch
 
         out = self.forward(images)
-        #
-        # print()
-        # print(out[0].device)
-        # print(targets[0].device)
-        # print(self.priors.device)
 
         loss_localization, loss_classification, loss_landmarks = self.loss(out, targets)
 
