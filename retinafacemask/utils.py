@@ -1,3 +1,4 @@
+
 import re
 from pathlib import Path
 from typing import Union, Optional, Any, Dict
@@ -19,6 +20,7 @@ class PolyLR(_LRScheduler):
 
     def get_lr(self):
         return [base_lr * (1 - float(self.last_epoch) / self.max_iter) ** self.power for base_lr in self.base_lrs]
+
 
 
 def load_checkpoint(file_path: Union[Path, str], rename_in_layers: Optional[dict] = None) -> Dict[str, Any]:

@@ -94,6 +94,7 @@ loss_weights:
   classification: 1
   landmarks: 1
 
+
 test_parameters:
   variance: [0.1, 0.2]
 
@@ -152,6 +153,7 @@ test_parameters:
 #          - 0.2740486792335106
 #          - 0.18297546821447516
 #
+
 test_aug:
   transform:
     __class_fullname__: albumentations.core.composition.Compose

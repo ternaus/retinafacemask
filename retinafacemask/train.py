@@ -12,6 +12,7 @@ from torch.utils.data import DataLoader
 
 from retinafacemask.data_augment import Preproc
 from retinafacemask.dataset import WiderFaceDetection, detection_collate
+from retinafacemask.prior_box import priorbox
 
 
 def get_args():
@@ -33,6 +34,7 @@ class RetinaFaceMask(pl.LightningModule):
             self.model = apex.parallel.convert_syncbn_model(self.model)
 
         self.loss_weights = self.hparams["loss_weights"]
+
 
         priors = object_from_dict(self.hparams["prior_box"], image_size=[840, 840])
         self.loss = object_from_dict(self.hparams["loss"], priors=priors)
