@@ -17,13 +17,13 @@ from typing import Dict
 import cv2
 import numpy as np
 import torch
-import torch.backends.cudnn as cudnn
 import yaml
 from albumentations.core.serialization import from_dict
 from iglovikov_helper_functions.config_parsing.utils import object_from_dict
 from iglovikov_helper_functions.utils.image_utils import load_rgb
 from jpeg4py import JPEGRuntimeError
 from pytorch_toolbelt.utils.torch_utils import tensor_from_rgb_image
+from torch.backends import cudnn
 from torch.utils.data import DataLoader, Dataset
 from torchvision.ops import nms
 from tqdm import tqdm
