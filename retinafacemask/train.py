@@ -35,7 +35,6 @@ class RetinaFaceMask(pl.LightningModule):
 
         self.loss_weights = self.hparams["loss_weights"]
 
-
         priors = object_from_dict(self.hparams["prior_box"], image_size=[840, 840])
         self.loss = object_from_dict(self.hparams["loss"], priors=priors)
 
