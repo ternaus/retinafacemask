@@ -12,7 +12,6 @@ from torch.utils.data import DataLoader
 
 from retinafacemask.data_augment import Preproc
 from retinafacemask.dataset import WiderFaceDetection, detection_collate
-from retinafacemask.prior_box import priorbox
 
 
 def get_args():
