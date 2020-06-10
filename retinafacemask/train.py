@@ -12,7 +12,6 @@ from torch.utils.data import DataLoader
 
 from retinafacemask.data_augment import Preproc
 from retinafacemask.dataset import WiderFaceDetection, detection_collate
-from retinafacemask.prior_box import priorbox
 
 
 def get_args():
@@ -35,13 +34,7 @@ class RetinaFaceMask(pl.LightningModule):
 
         self.loss_weights = self.hparams["loss_weights"]
 
-        # priorbox = object_from_dict(self.hparams["prior_box"])
-        priors = priorbox(
-            min_sizes=[[16, 32], [64, 128], [256, 512]], steps=[8, 16, 32], clip=False, image_size=[840, 840]
-        )
-        # with torch.no_grad():
-        #     priors = priorbox.forward()
-
+        priors = object_from_dict(self.hparams["prior_box"], image_size=[840, 840])
         self.loss = object_from_dict(self.hparams["loss"], priors=priors)
 
     def forward(self, batch: torch.Tensor) -> torch.Tensor:  # skipcq: PYL-W0221
