@@ -46,6 +46,7 @@ class RetinaFaceMask(pl.LightningModule):
                 label_path=self.hparams["train_annotation_path"],
                 image_path=self.hparams["train_image_path"],
                 preproc=Preproc(self.hparams["prior_box"]["image_size"][0], self.hparams["rgb_mean"]),
+                add_masks_prob=self.hparams["add_masks_prob"],
             ),
             batch_size=self.hparams["train_parameters"]["batch_size"],
             num_workers=self.hparams["num_workers"],

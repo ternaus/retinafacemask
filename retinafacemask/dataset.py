@@ -1,17 +1,64 @@
 import json
+import random
 from pathlib import Path
 from typing import Tuple, Optional
 
+import cv2
 import numpy as np
 import torch
 from iglovikov_helper_functions.utils.image_utils import load_rgb
 from torch.utils import data
 
 from retinafacemask.data_augment import Preproc
+from retinafacemask.utils import random_color
+
+
+def l2_measure(a: np.ndarray, b: np.ndarray) -> float:
+    return np.sqrt(((a - b) ** 2).sum())
+
+
+def extract_mask_points(points: np.ndarray) -> np.ndarray:
+    target_mask_polygon_points = np.zeros((16, 2), dtype=np.int32)
+
+    target_mask_polygon_points[0] = points[28].astype(np.int32)
+    target_mask_polygon_points[1:] = points[1:16].astype(np.int32)
+
+    return target_mask_polygon_points
+
+
+def extract_target_points_and_characteristic(points: np.ndarray) -> Tuple[np.ndarray, float, float]:
+    avg_left_eye_point = points[36:42].mean(axis=0)
+    avg_right_eye_point = points[42:48].mean(axis=0)
+    avg_mouth_point = points[48:68].mean(axis=0)
+
+    left_face_point = points[1]
+    right_face_point = points[15]
+
+    d1 = l2_measure(left_face_point, avg_mouth_point)
+    d2 = l2_measure(right_face_point, avg_mouth_point)
+
+    x1, y1 = avg_left_eye_point
+    x2, y2 = avg_right_eye_point
+    alpha = np.arctan((y2 - y1) / (x2 - x1 + 1e-5))
+
+    s1 = alpha * 180 / np.pi
+    s2 = d1 / (d2 + 1e-5)
+
+    target_mask_polygon_points = extract_mask_points(points)
+
+    return target_mask_polygon_points, s1, s2
 
 
 class WiderFaceDetection(data.Dataset):
-    def __init__(self, label_path: str, image_path: str, preproc: Optional[Preproc] = None) -> None:
+    def __init__(
+        self,
+        label_path: str,
+        image_path: str,
+        preproc: Optional[Preproc] = None,
+        add_masks_prob: Optional[float] = None,
+    ) -> None:
+        self.add_mask_prob = add_masks_prob
+
         self.preproc = preproc
         self.image_path = Path(image_path)
 
@@ -54,6 +101,12 @@ class WiderFaceDetection(data.Dataset):
                 annotation[0, 14] = 1
 
             annotations = np.append(annotations, annotation, axis=0)
+
+            if "dlib_landmarks" in label and self.add_mask_prob is not None and self.add_mask_prob < random.random():
+                points = label["dlib_landmarks"]
+                target_points, _, _ = extract_target_points_and_characteristic(np.array(points).astype(np.int32))
+                image = cv2.fillPoly(image, [target_points], color=random_color())
+
         target = np.array(annotations)
         if self.preproc is not None:
             image, target = self.preproc(image, target)

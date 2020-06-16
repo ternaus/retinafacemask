@@ -5,6 +5,7 @@ Detector for faces with masks / no masks on top of them.
 ### Faces with masks
 
 [https://github.com/X-zhangyang/Real-World-Masked-Face-Dataset]
+[https://makeml.app/datasets/mask]
 
 ### Faces without masks
 [http://www.robots.ox.ac.uk/~vgg/data/vgg_face2/]

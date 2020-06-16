@@ -2,6 +2,7 @@ import re
 from pathlib import Path
 from typing import Union, Optional, Any, Dict
 
+import numpy as np
 import torch
 from torch.optim.lr_scheduler import _LRScheduler
 from torch.optim.optimizer import Optimizer
@@ -45,3 +46,7 @@ def load_checkpoint(file_path: Union[Path, str], rename_in_layers: Optional[dict
         checkpoint["state_dict"] = result
 
     return checkpoint
+
+
+def random_color():
+    return np.random.randint(0, 255, size=3)
