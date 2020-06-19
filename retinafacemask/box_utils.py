@@ -2,19 +2,19 @@ import numpy as np
 import torch
 
 
-def point_form(boxes):
-    """ Convert prior_boxes to (xmin, ymin, xmax, ymax)
-    representation for comparison to point form ground truth data.
+def point_form(boxes: torch.Tensor) -> torch.Tensor:
+    """Convert prior_boxes to (xmin, ymin, xmax, ymax) representation for comparison to point form ground truth data.
+
     Args:
-        boxes: (tensor) center-size default boxes from priorbox layers.
+        boxes: center-size default boxes from priorbox layers.
     Return:
-        boxes: (tensor) Converted xmin, ymin, xmax, ymax form of boxes.
+        boxes: Converted xmin, ymin, xmax, ymax form of boxes.
     """
     return torch.cat((boxes[:, :2] - boxes[:, 2:] / 2, boxes[:, :2] + boxes[:, 2:] / 2), 1)  # xmin, ymin  # xmax, ymax
 
 
-def center_size(boxes):
-    """ Convert prior_boxes to (cx, cy, w, h)
+def center_size(boxes: torch.Tensor) -> torch.Tensor:
+    """Convert prior_boxes to (cx, cy, w, h)
     representation for comparison to center-size form ground truth data.
     Args:
         boxes: (tensor) point_form boxes
@@ -233,7 +233,7 @@ def decode_landm(pre, priors, variances):
     return landms
 
 
-def log_sum_exp(x):
+def log_sum_exp(x: torch.Tensor) -> torch.Tensor:
     """Utility function for computing log_sum_exp while determining
     This will be used to determine unaveraged confidence loss across
     all examples in a batch.

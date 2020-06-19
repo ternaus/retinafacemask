@@ -283,8 +283,8 @@ def main():
                     if args.save_crops:
                         x_min, y_min, x_max, y_max = bbox
 
-                        x_min = max(0, x_min)
-                        y_min = max(0, y_min)
+                        x_min = np.clip(x_min, 0, x_max - 1)
+                        y_min = np.clip(y_min, 0, y_max - 1)
 
                         crop = raw_image[y_min:y_max, x_min:x_max].cpu().numpy()
 

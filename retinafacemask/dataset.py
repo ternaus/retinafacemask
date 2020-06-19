@@ -1,7 +1,7 @@
 import json
 import random
 from pathlib import Path
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Dict, Any, List
 
 import cv2
 import numpy as np
@@ -68,7 +68,7 @@ class WiderFaceDetection(data.Dataset):
     def __len__(self) -> int:
         return len(self.labels)
 
-    def __getitem__(self, index: int) -> Tuple[torch.Tensor, np.ndarray]:
+    def __getitem__(self, index: int) -> Dict[str, Any]:
         labels = self.labels[index]
         file_name = labels["file_name"]
         image = load_rgb(self.image_path / file_name)
@@ -83,22 +83,23 @@ class WiderFaceDetection(data.Dataset):
             annotation[0, 2] = label["x_min"] + label["width"]
             annotation[0, 3] = label["y_min"] + label["height"]
 
-            landmarks = label["landmarks"]
-            # landmarks
-            annotation[0, 4] = landmarks[0]  # l0_x
-            annotation[0, 5] = landmarks[1]  # l0_y
-            annotation[0, 6] = landmarks[3]  # l1_x
-            annotation[0, 7] = landmarks[4]  # l1_y
-            annotation[0, 8] = landmarks[6]  # l2_x
-            annotation[0, 9] = landmarks[7]  # l2_y
-            annotation[0, 10] = landmarks[9]  # l3_x
-            annotation[0, 11] = landmarks[10]  # l3_y
-            annotation[0, 12] = landmarks[12]  # l4_x
-            annotation[0, 13] = landmarks[13]  # l4_y
-            if annotation[0, 4] < 0:
-                annotation[0, 14] = -1
-            else:
-                annotation[0, 14] = 1
+            if label["landmarks"]:
+                landmarks = label["landmarks"]
+                # landmarks
+                annotation[0, 4] = landmarks[0]  # l0_x
+                annotation[0, 5] = landmarks[1]  # l0_y
+                annotation[0, 6] = landmarks[3]  # l1_x
+                annotation[0, 7] = landmarks[4]  # l1_y
+                annotation[0, 8] = landmarks[6]  # l2_x
+                annotation[0, 9] = landmarks[7]  # l2_y
+                annotation[0, 10] = landmarks[9]  # l3_x
+                annotation[0, 11] = landmarks[10]  # l3_y
+                annotation[0, 12] = landmarks[12]  # l4_x
+                annotation[0, 13] = landmarks[13]  # l4_y
+                if annotation[0, 4] < 0:
+                    annotation[0, 14] = -1
+                else:
+                    annotation[0, 14] = 1
 
             annotations = np.append(annotations, annotation, axis=0)
 
@@ -111,10 +112,14 @@ class WiderFaceDetection(data.Dataset):
         if self.preproc is not None:
             image, target = self.preproc(image, target)
 
-        return torch.from_numpy(image).float(), target.astype(np.float32)
+        return {
+            "image": torch.from_numpy(image).float(),
+            "annotation": target.astype(np.float32),
+            "file_name": file_name,
+        }
 
 
-def detection_collate(batch: Tuple) -> Tuple[torch.Tensor, list]:
+def detection_collate(batch: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Custom collate fn for dealing with batches of images that have a different
     number of associated object annotations (bounding boxes).
 
@@ -126,14 +131,13 @@ def detection_collate(batch: Tuple) -> Tuple[torch.Tensor, list]:
             1) (tensor) batch of images stacked on their 0 dim
             2) (list of tensors) annotations for a given image are stacked on 0 dim
     """
-    targets = []
+    annotation = []
     images = []
-    for sample in batch:
-        for tup in sample:
-            if torch.is_tensor(tup):
-                images.append(tup)
-            elif isinstance(tup, type(np.empty(0))):
-                annotations = torch.from_numpy(tup).float()
-                targets.append(annotations)
+    file_names = []
 
-    return torch.stack(images, 0), targets
+    for sample in batch:
+        images.append(sample["image"])
+        annotation.append(torch.from_numpy(sample["annotation"]).float())
+        file_names.append(sample["file_name"])
+
+    return {"image": torch.stack(images), "annotation": annotation, "file_name": file_names}

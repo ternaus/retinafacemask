@@ -13,8 +13,8 @@ sync_bn: True
 
 add_masks_prob: 0.5
 
-num_workers: 0
-experiment_name: "2020-06-15"
+num_workers: 16
+experiment_name: "2020-06-19"
 
 rgb_mean: [0.485, 0.456, 0.406]
 num_classes: 2
@@ -62,14 +62,14 @@ train_parameters:
 
 checkpoint_callback:
   type: pytorch_lightning.callbacks.ModelCheckpoint
-  filepath: "2020-06-15"
+  filepath: "2020-06-19"
   monitor: val_loss
   verbose: True
-  mode: min
+  mode: max
   save_top_k: -1
 
 val_parameters:
-  batch_size: 3
+  batch_size: 10
   iou_threshold: 0.4
 
 loss:
