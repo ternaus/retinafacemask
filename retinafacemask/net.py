@@ -102,5 +102,4 @@ class FPN(nn.Module):
         output1 = output1 + up2
         output1 = self.merge1(output1)
 
-        out = [output1, output2, output3]
-        return out
+        return [output1, output2, output3]

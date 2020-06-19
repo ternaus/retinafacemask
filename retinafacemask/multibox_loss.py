@@ -63,7 +63,7 @@ class MultiBoxLoss(nn.Module):
                 priors shape: torch.size(num_priors,4)
 
             ground_truth (tensor): Ground truth boxes and labels for a batch,
-                shape: [batch_size,num_objs,5] (last idx is the label).
+                shape: [batch_size, num_objs, 5] (last idx is the label).
         """
 
         loc_data, conf_data, landm_data = predictions
@@ -76,6 +76,7 @@ class MultiBoxLoss(nn.Module):
         loc_t = torch.Tensor(num, num_priors, 4).to(targets[0].device)
         landm_t = torch.Tensor(num, num_priors, 10).to(targets[0].device)
         conf_t = torch.LongTensor(num, num_priors).to(targets[0].device)
+
         for idx in range(num):
             truths = targets[idx][:, :4].data
             labels = targets[idx][:, -1].data
@@ -99,7 +100,7 @@ class MultiBoxLoss(nn.Module):
         conf_t[pos] = 1
 
         # Localization Loss (Smooth L1)
-        # Shape: [batch,num_priors,4]
+        # Shape: [batch, num_priors, 4]
         pos_idx = pos.unsqueeze(pos.dim()).expand_as(loc_data)
         loc_p = loc_data[pos_idx].view(-1, 4)
         loc_t = loc_t[pos_idx].view(-1, 4)

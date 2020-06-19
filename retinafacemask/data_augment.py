@@ -79,30 +79,6 @@ def _crop(image, boxes, labels, landm, img_dim):
     return image, boxes, labels, landm, pad_image_flag
 
 
-def _expand(image, boxes, fill, p):
-    if random.randrange(2):
-        return image, boxes
-
-    height, width, depth = image.shape
-
-    scale = random.uniform(1, p)
-    w = int(scale * width)
-    h = int(scale * height)
-
-    left = random.randint(0, w - width)
-    top = random.randint(0, h - height)
-
-    boxes_t = boxes.copy()
-    boxes_t[:, :2] += (left, top)
-    boxes_t[:, 2:] += (left, top)
-    expand_image = np.empty((h, w, depth), dtype=image.dtype)
-    expand_image[:, :] = fill
-    expand_image[top : top + height, left : left + width] = image
-    image = expand_image
-
-    return image, boxes_t
-
-
 def _mirror(image: np.ndarray, boxes: np.ndarray, landms: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     width = image.shape[1]
     if random.randrange(2):

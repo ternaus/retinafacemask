@@ -266,7 +266,7 @@ def main():
                 scores = scores[keep].cpu().numpy().astype(np.float64)
 
                 if args.visualize:
-                    vis_image = raw_image.cpu().numpy()
+                    vis_image = raw_image.cpu().numpy().copy()
 
                 for crop_id, bbox in enumerate(boxes):
                     bbox = bbox.cpu().numpy()
@@ -283,8 +283,8 @@ def main():
                     if args.save_crops:
                         x_min, y_min, x_max, y_max = bbox
 
-                        x_min = max(0, x_min)
-                        y_min = max(0, y_min)
+                        x_min = np.clip(x_min, 0, x_max - 1)
+                        y_min = np.clip(y_min, 0, y_max - 1)
 
                         crop = raw_image[y_min:y_max, x_min:x_max].cpu().numpy()
 
@@ -303,10 +303,8 @@ def main():
 
                         cv2.imwrite(str(crop_file_path), cv2.cvtColor(crop, cv2.COLOR_BGR2RGB))
 
-                    if args.visualize:
-                        cv2.imwrite(
-                            str(output_vis_path / f"{file_id}.jpg"), cv2.cvtColor(vis_image, cv2.COLOR_BGR2RGB)
-                        )
+                if args.visualize:
+                    cv2.imwrite(str(output_vis_path / f"{file_id}.jpg"), cv2.cvtColor(vis_image, cv2.COLOR_BGR2RGB))
 
                 if args.save_boxes:
                     result = {
