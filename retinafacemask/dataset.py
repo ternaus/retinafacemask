@@ -65,6 +65,8 @@ class WiderFaceDetection(data.Dataset):
         with open(label_path) as f:
             self.labels = json.load(f)
 
+        self.valid_annotation_indices = np.array([0, 1, 3, 4, 6, 7, 9, 10, 12, 13])
+
     def __len__(self) -> int:
         return len(self.labels)
 
@@ -84,18 +86,9 @@ class WiderFaceDetection(data.Dataset):
             annotation[0, 3] = label["y_min"] + label["height"]
 
             if label["landmarks"]:
-                landmarks = label["landmarks"]
+                landmarks = np.array(label["landmarks"])
                 # landmarks
-                annotation[0, 4] = landmarks[0]  # l0_x
-                annotation[0, 5] = landmarks[1]  # l0_y
-                annotation[0, 6] = landmarks[3]  # l1_x
-                annotation[0, 7] = landmarks[4]  # l1_y
-                annotation[0, 8] = landmarks[6]  # l2_x
-                annotation[0, 9] = landmarks[7]  # l2_y
-                annotation[0, 10] = landmarks[9]  # l3_x
-                annotation[0, 11] = landmarks[10]  # l3_y
-                annotation[0, 12] = landmarks[12]  # l4_x
-                annotation[0, 13] = landmarks[13]  # l4_y
+                annotation[0, 4:14] = landmarks[self.valid_annotation_indices]
                 if annotation[0, 4] < 0:
                     annotation[0, 14] = -1
                 else:

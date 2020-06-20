@@ -1,6 +1,6 @@
 import random
 from typing import Tuple
-
+import torch
 import albumentations as albu
 import numpy as np
 
@@ -101,7 +101,7 @@ def _mirror(image: np.ndarray, boxes: np.ndarray, landms: np.ndarray) -> Tuple[n
     return image, boxes, landms
 
 
-def _pad_to_square(image, rgb_mean, pad_image_flag):
+def _pad_to_square(image: np.ndarray, rgb_mean: np.ndarray, pad_image_flag: bool) -> torch.Tensor:
     if not pad_image_flag:
         return image
     height, width = image.shape[:2]
