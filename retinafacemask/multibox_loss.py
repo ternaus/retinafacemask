@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 from torch import nn
-
+from typing import Tuple
 from retinafacemask.box_utils import match, log_sum_exp
 
 
@@ -53,46 +53,63 @@ class MultiBoxLoss(nn.Module):
 
         self.priors = priors
 
-    def forward(self, predictions, targets):
+    def forward(
+        self, predictions: Tuple[torch.Tensor, torch.Tensor, torch.Tensor], targets: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Multibox Loss
         Args:
-            predictions (tuple): A tuple containing loc preds, conf preds,
+            predictions: A tuple containing locations predictions, confidence predictions,
             and prior boxes from SSD net.
-                conf shape: torch.size(batch_size,num_priors,num_classes)
-                loc shape: torch.size(batch_size,num_priors,4)
-                priors shape: torch.size(num_priors,4)
+                conf shape: torch.size(batch_size, num_priors, num_classes)
+                loc shape: torch.size(batch_size, num_priors, 4)
+                priors shape: torch.size(num_priors, 4)
 
-            ground_truth (tensor): Ground truth boxes and labels for a batch,
-                shape: [batch_size, num_objs, 5] (last idx is the label).
+            targets: Ground truth boxes and labels for a batch,
+                shape: [batch_size, num_objs, 5] (last box_index is the label).
         """
 
-        loc_data, conf_data, landm_data = predictions
+        loc_data, conf_data, landmark_data = predictions
 
         priors = self.priors.to(targets[0].device)
-        num = loc_data.size(0)
+        num_boxes = loc_data.size(0)
         num_priors = priors.size(0)
 
         # match priors (default boxes) and ground truth boxes
-        loc_t = torch.Tensor(num, num_priors, 4).to(targets[0].device)
-        landm_t = torch.Tensor(num, num_priors, 10).to(targets[0].device)
-        conf_t = torch.LongTensor(num, num_priors).to(targets[0].device)
+        loc_t = torch.Tensor(num_boxes, num_priors, 4).to(targets[0].device)
+        landm_t = torch.Tensor(num_boxes, num_priors, 10).to(targets[0].device)
+        # conf_t = torch.LongTensor(num_boxes, num_priors).to(targets[0].device)
+        label_t = torch.Tensor(num_boxes, num_priors, 2).to(targets[0].device)
 
-        for idx in range(num):
-            truths = targets[idx][:, :4].data
-            labels = targets[idx][:, -1].data
-            landms = targets[idx][:, 4:14].data
+        for box_index in range(num_boxes):
+            box_gt = targets[box_index][:, :4].data
+            landmarks_gt = targets[box_index][:, 4:14].data
+            labels = targets[box_index][:, 14:].data
             defaults = priors.data
 
-            match(self.threshold, truths, defaults, self.variance, labels, landms, loc_t, conf_t, landm_t, idx)
+            match(
+                self.threshold,
+                box_gt,
+                defaults,
+                self.variance,
+                labels,
+                landmarks_gt,
+                loc_t,
+                label_t,
+                landm_t,
+                box_index,
+            )
+
+        conf_t = label_t[:, :, 0].long()
+        # mask_label_t = label_t[:, :, 1]
 
         zeros = torch.tensor(0)
-        # landm Loss (Smooth L1)
-        # Shape: [batch,num_priors,10]
+        # landmark Loss (Smooth L1)
+        # Shape: [batch, num_priors, 10]
         pos1 = conf_t > zeros
         num_pos_landm = pos1.long().sum(1, keepdim=True)
         N1 = max(num_pos_landm.data.sum().float(), 1)
-        pos_idx1 = pos1.unsqueeze(pos1.dim()).expand_as(landm_data)
-        landm_p = landm_data[pos_idx1].view(-1, 10)
+        pos_idx1 = pos1.unsqueeze(pos1.dim()).expand_as(landmark_data)
+        landm_p = landmark_data[pos_idx1].view(-1, 10)
         landm_t = landm_t[pos_idx1].view(-1, 10)
         loss_landm = F.smooth_l1_loss(landm_p, landm_t, reduction="sum")
 
@@ -112,7 +129,7 @@ class MultiBoxLoss(nn.Module):
 
         # Hard Negative Mining
         loss_c[pos.view(-1, 1)] = 0  # filter out pos boxes for now
-        loss_c = loss_c.view(num, -1)
+        loss_c = loss_c.view(num_boxes, -1)
         _, loss_idx = loss_c.sort(1, descending=True)
         _, idx_rank = loss_idx.sort(1)
         num_pos = pos.long().sum(1, keepdim=True)

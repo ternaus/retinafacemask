@@ -16,7 +16,6 @@ add_masks_prob: 0.5
 num_workers: 16
 experiment_name: "2020-06-19"
 
-rgb_mean: [0.485, 0.456, 0.406]
 num_classes: 2
 
 num_gpu: 2

@@ -1,7 +1,6 @@
 import random
 from typing import Tuple
-import torch
-import albumentations as albu
+
 import numpy as np
 
 from retinafacemask.box_utils import matrix_iof
@@ -18,8 +17,8 @@ def _crop(image, boxes, labels, landm, img_dim):
         else:
             scale = random.uniform(0.3, 1.0)
         """
-        PRE_SCALES = [0.3, 0.45, 0.6, 0.8, 1.0]
-        scale = random.choice(PRE_SCALES)
+        pre_scales = [0.3, 0.45, 0.6, 0.8, 1.0]
+        scale = random.choice(pre_scales)
         short_side = min(width, height)
         w = int(scale * short_side)
         h = w
@@ -101,14 +100,14 @@ def _mirror(image: np.ndarray, boxes: np.ndarray, landms: np.ndarray) -> Tuple[n
     return image, boxes, landms
 
 
-def _pad_to_square(image: np.ndarray, rgb_mean: np.ndarray, pad_image_flag: bool) -> torch.Tensor:
+def _pad_to_square(image: np.ndarray, rgb_mean: np.ndarray, pad_image_flag: bool) -> np.ndarray:
     if not pad_image_flag:
         return image
     height, width = image.shape[:2]
     long_side = max(width, height)
     image_t = np.empty((long_side, long_side, 3), dtype=image.dtype)
     image_t[:, :] = rgb_mean
-    image_t[0:height, 0:width] = image
+    image_t[:height, :width] = image
     return image_t
 
 
@@ -122,8 +121,8 @@ class Preproc:
             raise ValueError("this image does not have gt")
 
         boxes = targets[:, :4].copy()
-        labels = targets[:, -1].copy()
-        landmarks = targets[:, 4:-1].copy()
+        landmarks = targets[:, 4:-2].copy()
+        labels = targets[:, -2].copy()
 
         image_t, boxes_t, labels_t, landm_t, pad_image_flag = _crop(image, boxes, labels, landmarks, self.img_dim)
         image_t = _pad_to_square(image_t, self.rgb_means, pad_image_flag)
@@ -138,16 +137,5 @@ class Preproc:
 
         labels_t = np.expand_dims(labels_t, 1)
         targets_t = np.hstack((boxes_t, landm_t, labels_t))
-
-        image_t = albu.Compose(
-            [
-                albu.RandomBrightnessContrast(brightness_limit=0.125, contrast_limit=(0.5, 1.5), p=0.5),
-                albu.HueSaturationValue(hue_shift_limit=18, val_shift_limit=0, p=0.5),
-                albu.Resize(height=self.img_dim, width=self.img_dim, p=1),
-                albu.Normalize(p=1),
-            ]
-        )(image=image_t)["image"]
-
-        image_t = image_t.transpose(2, 0, 1)
 
         return image_t, targets_t

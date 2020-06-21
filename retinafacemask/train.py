@@ -9,14 +9,13 @@ import pytorch_lightning as pl
 import torch
 import yaml
 from iglovikov_helper_functions.config_parsing.utils import object_from_dict
-from iglovikov_helper_functions.dl.pytorch.lightning import find_average
 from iglovikov_helper_functions.metrics.map import recall_precision
 from pytorch_lightning.logging import NeptuneLogger
 from torch.utils.data import DataLoader
 from torchvision.ops import nms
 
 from retinafacemask.box_utils import decode
-from retinafacemask.data_augment import Preproc
+
 from retinafacemask.dataset import WiderFaceDetection, detection_collate
 import torch.nn.functional as F
 
@@ -52,7 +51,7 @@ class RetinaFaceMask(pl.LightningModule):
             WiderFaceDetection(
                 label_path=self.hparams["train_annotation_path"],
                 image_path=self.hparams["train_image_path"],
-                preproc=Preproc(self.hparams["image_size"][0], self.hparams["rgb_mean"]),
+                image_size=self.hparams["image_size"][0],
                 add_masks_prob=self.hparams["add_masks_prob"],
             ),
             batch_size=self.hparams["train_parameters"]["batch_size"],
@@ -68,7 +67,7 @@ class RetinaFaceMask(pl.LightningModule):
             WiderFaceDetection(
                 label_path=self.hparams["val_annotation_path"],
                 image_path=self.hparams["val_image_path"],
-                preproc=Preproc(self.hparams["image_size"][0], self.hparams["rgb_mean"]),
+                image_size=self.hparams["image_size"][0],
                 add_masks_prob=None,
             ),
             batch_size=self.hparams["val_parameters"]["batch_size"],
