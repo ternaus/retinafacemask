@@ -139,6 +139,4 @@ class Preproc:
         # labels_t = np.expand_dims(labels_t, 1)
         targets_t = np.hstack((boxes_t, landmarks_t, labels_t))
 
-        assert targets.shape[-1] == targets_t.shape[-1], f"{targets.shape} {targets_t.shape}"
-
         return image_t, targets_t
