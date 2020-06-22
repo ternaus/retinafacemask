@@ -49,5 +49,4 @@ def load_checkpoint(file_path: Union[Path, str], rename_in_layers: Optional[dict
 
 
 def random_color() -> Tuple[int, ...]:
-    result = tuple(np.random.randint(0, 255, size=3))
-    return tuple([int(x) for x in result])
+    return tuple(int(x) for x in np.random.randint(0, 255, size=3))
