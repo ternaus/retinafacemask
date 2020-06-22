@@ -2,13 +2,15 @@ import json
 import random
 from pathlib import Path
 from typing import Tuple, Optional, Dict, Any, List
+
 import albumentations as albu
 import cv2
 import numpy as np
 import torch
 from iglovikov_helper_functions.utils.image_utils import load_rgb
-from torch.utils import data
 from pytorch_toolbelt.utils.torch_utils import tensor_from_rgb_image
+from torch.utils import data
+
 from retinafacemask.data_augment import Preproc
 from retinafacemask.utils import random_color
 
@@ -94,7 +96,7 @@ class WiderFaceDetection(data.Dataset):
                 else:
                     annotation[0, 14] = 1
 
-            if "dlib_landmarks" in label and self.add_mask_prob is not None and self.add_mask_prob < random.random():
+            if "dlib_landmarks" in label and self.add_mask_prob is not None and random.random() < self.add_mask_prob:
                 points = label["dlib_landmarks"]
                 target_points, _, _ = extract_target_points_and_characteristic(np.array(points).astype(np.int32))
                 image = cv2.fillPoly(image, [target_points], color=random_color())

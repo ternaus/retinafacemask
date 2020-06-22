@@ -95,18 +95,20 @@ class RetinaFaceMask(pl.LightningModule):
 
         out = self.forward(images)
 
-        loss_localization, loss_classification, loss_landmarks = self.loss(out, targets)
+        loss_localization, loss_classification, loss_landmarks, loss_properties = self.loss(out, targets)
 
         total_loss = (
             self.loss_weights["localization"] * loss_localization
             + self.loss_weights["classification"] * loss_classification
             + self.loss_weights["landmarks"] * loss_landmarks
+            + self.loss_weights["properties"] * loss_properties
         )
 
         logs = {
             "classification": loss_classification,
             "localization": loss_localization,
             "landmarks": loss_landmarks,
+            "properties": loss_properties,
             "train_loss": total_loss,
             "lr": self._get_current_lr(),
         }
@@ -126,18 +128,18 @@ class RetinaFaceMask(pl.LightningModule):
 
         out = self.forward(images)
 
-        loc, confidence, _ = out
+        location, confidence, _, _ = out
 
         confidence = F.softmax(confidence, dim=-1)
-        batch_size = loc.shape[0]
+        batch_size = location.shape[0]
 
         predictions_coco = []
 
-        scale = torch.Tensor([image_width, image_height, image_width, image_height]).to(loc.device)
+        scale = torch.Tensor([image_width, image_height, image_width, image_height]).to(location.device)
 
         for batch_id in range(batch_size):
             boxes = decode(
-                loc.data[batch_id], self.priors.to(images.device), self.hparams["test_parameters"]["variance"]
+                location.data[batch_id], self.priors.to(images.device), self.hparams["test_parameters"]["variance"]
             )
             scores = confidence[batch_id][:, 1]
 

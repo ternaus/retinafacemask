@@ -5,37 +5,36 @@ import torch
 
 
 def point_form(boxes: torch.Tensor) -> torch.Tensor:
-    """Convert prior_boxes to (xmin, ymin, xmax, ymax) representation for comparison to point form ground truth data.
+    """Convert prior_boxes to (x_min, y_min, x_max, y_max) representation for comparison to point form ground truth data.
 
     Args:
         boxes: center-size default boxes from priorbox layers.
     Return:
-        boxes: Converted xmin, ymin, xmax, ymax form of boxes.
+        boxes: Converted x_min, y_min, x_max, y_max form of boxes.
     """
-    return torch.cat((boxes[:, :2] - boxes[:, 2:] / 2, boxes[:, :2] + boxes[:, 2:] / 2), 1)  # xmin, ymin  # xmax, ymax
+    return torch.cat((boxes[:, :2] - boxes[:, 2:] / 2, boxes[:, :2] + boxes[:, 2:] / 2), 1)
 
 
 def center_size(boxes: torch.Tensor) -> torch.Tensor:
-    """Convert prior_boxes to (cx, cy, w, h)
-    representation for comparison to center-size form ground truth data.
+    """Convert prior_boxes to (cx, cy, w, h) representation for comparison to center-size form ground truth data.
     Args:
         boxes: point_form boxes
     Return:
-        boxes: Converted xmin, ymin, xmax, ymax form of boxes.
+        boxes: Converted x_min, y_min, x_max, y_max form of boxes.
     """
-    return torch.cat((boxes[:, 2:] + boxes[:, :2]) / 2, boxes[:, 2:] - boxes[:, :2], 1)  # cx, cy  # w, h
+    return torch.cat((boxes[:, 2:] + boxes[:, :2]) / 2, boxes[:, 2:] - boxes[:, :2], 1)
 
 
 def intersect(box_a: torch.Tensor, box_b: torch.Tensor) -> torch.Tensor:
     """ We resize both tensors to [A,B,2] without new malloc:
-    [A,2] -> [A,1,2] -> [A,B,2]
-    [B,2] -> [1,B,2] -> [A,B,2]
+    [A, 2] -> [A, 1, 2] -> [A, B, 2]
+    [B, 2] -> [1, B, 2] -> [A, B, 2]
     Then we compute the area of intersect between box_a and box_b.
     Args:
-      box_a: bounding boxes, Shape: [A,4].
-      box_b: bounding boxes, Shape: [B,4].
+      box_a: bounding boxes, Shape: [A, 4].
+      box_b: bounding boxes, Shape: [B, 4].
     Return:
-      intersection area, Shape: [A,B].
+      intersection area, Shape: [A, B].
     """
     A = box_a.size(0)
     B = box_b.size(0)
@@ -60,12 +59,12 @@ def jaccard(box_a: torch.Tensor, box_b: torch.Tensor) -> torch.Tensor:
     area_a = ((box_a[:, 2] - box_a[:, 0]) * (box_a[:, 3] - box_a[:, 1])).unsqueeze(1).expand_as(inter)  # [A,B]
     area_b = ((box_b[:, 2] - box_b[:, 0]) * (box_b[:, 3] - box_b[:, 1])).unsqueeze(0).expand_as(inter)  # [A,B]
     union = area_a + area_b - inter
-    return inter / union  # [A,B]
+    return inter / union
 
 
-def matrix_iof(a, b):
+def matrix_iof(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     """
-    return iof of a and b, numpy version for data augenmentation
+    return iof of a and b, numpy version for data augmentation
     """
     lt = np.maximum(a[:, np.newaxis, :2], b[:, :2])
     rb = np.minimum(a[:, np.newaxis, 2:], b[:, 2:])
@@ -77,14 +76,14 @@ def matrix_iof(a, b):
 
 def match(
     threshold: float,
-    truths: torch.Tensor,
+    box_gt: torch.Tensor,
     priors: torch.Tensor,
     variances: List[float],
-    labels: torch.Tensor,
-    landmarks: torch.Tensor,
-    loc_t: torch.Tensor,
-    conf_t: torch.Tensor,
-    landm_t: torch.Tensor,
+    labels_gt: torch.Tensor,
+    landmarks_gt: torch.Tensor,
+    box_t: torch.Tensor,
+    label_t: torch.Tensor,
+    landmarks_t: torch.Tensor,
     batch_id: int,
 ) -> None:
     """Match each prior box with the ground truth box of the highest jaccard overlap, encode the bounding
@@ -92,33 +91,33 @@ def match(
 
     Args:
         threshold: The overlap threshold used when matching boxes.
-        truths: Ground truth boxes, Shape: [num_obj, 4].
-        priors: Prior boxes from priorbox layers, Shape: [n_priors,4].
+        box_gt: Ground truth boxes, Shape: [num_obj, 4].
+        priors: Prior boxes from priorbox layers, Shape: [n_priors, 4].
         variances: Variances corresponding to each prior coord, Shape: [num_priors, 4].
-        labels: All the class labels for the image, Shape: [num_obj].
-        landmarks: Ground truth landms, Shape [num_obj, 10].
-        loc_t: Tensor to be filled w/ endcoded location targets.
-        conf_t: Tensor to be filled w/ matched indices for conf preds.
-        landm_t: Tensor to be filled w/ endcoded landmarks targets.
+        labels_gt: All the class labels for the image, Shape: [num_obj, 2].
+        landmarks_gt: Ground truth landms, Shape [num_obj, 10].
+        box_t: Tensor to be filled w/ endcoded location targets.
+        label_t: Tensor to be filled w/ matched indices for labels predictions.
+        landmarks_t: Tensor to be filled w/ endcoded landmarks targets.
         batch_id: current batch index
     Return:
         The matched indices corresponding to 1)location 2)confidence 3)landmarks preds.
     """
-    # jaccard index
-    overlaps = jaccard(truths, point_form(priors))
+    # Compute iou between gt and priors
+    overlaps = jaccard(box_gt, point_form(priors))
     # (Bipartite Matching)
-    # [1,num_objects] best prior for each ground truth
+    # [1, num_objects] best prior for each ground truth
     best_prior_overlap, best_prior_idx = overlaps.max(1, keepdim=True)
 
     # ignore hard gt
     valid_gt_idx = best_prior_overlap[:, 0] >= 0.2
     best_prior_idx_filter = best_prior_idx[valid_gt_idx, :]
     if best_prior_idx_filter.shape[0] <= 0:
-        loc_t[batch_id] = 0
-        conf_t[batch_id] = 0
+        box_t[batch_id] = 0
+        label_t[batch_id] = 0
         return
 
-    # [1,num_priors] best ground truth for each prior
+    # [1, num_priors] best ground truth for each prior
     best_truth_overlap, best_truth_idx = overlaps.max(0, keepdim=True)
     best_truth_idx.squeeze_(0)
     best_truth_overlap.squeeze_(0)
@@ -130,16 +129,17 @@ def match(
     # ensure every gt matches with its prior of max overlap
     for j in range(best_prior_idx.size(0)):  # 判别此anchor是预测哪一个boxes
         best_truth_idx[best_prior_idx[j]] = j
-    matches = truths[best_truth_idx]  # Shape: [num_priors,4] 此处为每一个anchor对应的bbox取出来
-    conf = labels[best_truth_idx]  # Shape: [num_priors]      此处为每一个anchor对应的label取出来
-    conf[best_truth_overlap < threshold] = 0  # label as background   overlap<0.35的全部作为负样本
+
+    matches = box_gt[best_truth_idx]  # Shape: [num_priors, 4] 此处为每一个anchor对应的bbox取出来
+    labels = labels_gt[best_truth_idx]  # Shape: [num_priors]      此处为每一个anchor对应的label取出来
+    labels[best_truth_overlap < threshold] = 0  # label as background   overlap<0.35的全部作为负样本
     loc = encode(matches, priors, variances)
 
-    matches_landm = landmarks[best_truth_idx]
-    landmarks = encode_landm(matches_landm, priors, variances)
-    loc_t[batch_id] = loc  # [num_priors,4] encoded offsets to learn
-    conf_t[batch_id] = conf  # [num_priors] top class label for each prior
-    landm_t[batch_id] = landmarks
+    matches_landm = landmarks_gt[best_truth_idx]
+    landmarks_gt = encode_landm(matches_landm, priors, variances)
+    box_t[batch_id] = loc  # [num_priors, 4] encoded offsets to learn
+    label_t[batch_id] = labels  # [num_priors] top class label for each prior
+    landmarks_t[batch_id] = landmarks_gt
 
 
 def encode(matched, priors, variances):

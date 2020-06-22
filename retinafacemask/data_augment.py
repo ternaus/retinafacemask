@@ -116,26 +116,29 @@ class Preproc:
         self.img_dim = img_dim
         self.rgb_means = rgb_means
 
-    def __call__(self, image, targets):
+    def __call__(self, image: np.ndarray, targets: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         if targets.shape[0] == 0:
             raise ValueError("this image does not have gt")
 
         boxes = targets[:, :4].copy()
         landmarks = targets[:, 4:-2].copy()
-        labels = targets[:, -2].copy()
+        labels = targets[:, -2:].copy()
 
-        image_t, boxes_t, labels_t, landm_t, pad_image_flag = _crop(image, boxes, labels, landmarks, self.img_dim)
+        image_t, boxes_t, labels_t, landmarks_t, pad_image_flag = _crop(image, boxes, labels, landmarks, self.img_dim)
+
         image_t = _pad_to_square(image_t, self.rgb_means, pad_image_flag)
-        image_t, boxes_t, landm_t = _mirror(image_t, boxes_t, landm_t)
+        image_t, boxes_t, landmarks_t = _mirror(image_t, boxes_t, landmarks_t)
         height, width = image_t.shape[:2]
 
         boxes_t[:, 0::2] = boxes_t[:, 0::2] / width
         boxes_t[:, 1::2] = boxes_t[:, 1::2] / height
 
-        landm_t[:, 0::2] = landm_t[:, 0::2] / width
-        landm_t[:, 1::2] = landm_t[:, 1::2] / height
+        landmarks_t[:, 0::2] = landmarks_t[:, 0::2] / width
+        landmarks_t[:, 1::2] = landmarks_t[:, 1::2] / height
 
-        labels_t = np.expand_dims(labels_t, 1)
-        targets_t = np.hstack((boxes_t, landm_t, labels_t))
+        # labels_t = np.expand_dims(labels_t, 1)
+        targets_t = np.hstack((boxes_t, landmarks_t, labels_t))
+
+        assert targets.shape[-1] == targets_t.shape[-1], f"{targets.shape} {targets_t.shape}"
 
         return image_t, targets_t
