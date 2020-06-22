@@ -4,7 +4,7 @@ from math import ceil
 import torch
 
 
-def priorbox(min_sizes, steps, clip, image_size=None):
+def priorbox(min_sizes, steps, clip, image_size):
     feature_maps = [[ceil(image_size[0] / step), ceil(image_size[1] / step)] for step in steps]
 
     anchors = []

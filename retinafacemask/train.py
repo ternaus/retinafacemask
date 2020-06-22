@@ -9,14 +9,13 @@ import pytorch_lightning as pl
 import torch
 import yaml
 from iglovikov_helper_functions.config_parsing.utils import object_from_dict
-from iglovikov_helper_functions.dl.pytorch.lightning import find_average
 from iglovikov_helper_functions.metrics.map import recall_precision
 from pytorch_lightning.logging import NeptuneLogger
 from torch.utils.data import DataLoader
 from torchvision.ops import nms
 
 from retinafacemask.box_utils import decode
-from retinafacemask.data_augment import Preproc
+
 from retinafacemask.dataset import WiderFaceDetection, detection_collate
 import torch.nn.functional as F
 
@@ -52,7 +51,7 @@ class RetinaFaceMask(pl.LightningModule):
             WiderFaceDetection(
                 label_path=self.hparams["train_annotation_path"],
                 image_path=self.hparams["train_image_path"],
-                preproc=Preproc(self.hparams["image_size"][0], self.hparams["rgb_mean"]),
+                image_size=self.hparams["image_size"][0],
                 add_masks_prob=self.hparams["add_masks_prob"],
             ),
             batch_size=self.hparams["train_parameters"]["batch_size"],
@@ -68,7 +67,7 @@ class RetinaFaceMask(pl.LightningModule):
             WiderFaceDetection(
                 label_path=self.hparams["val_annotation_path"],
                 image_path=self.hparams["val_image_path"],
-                preproc=Preproc(self.hparams["image_size"][0], self.hparams["rgb_mean"]),
+                image_size=self.hparams["image_size"][0],
                 add_masks_prob=None,
             ),
             batch_size=self.hparams["val_parameters"]["batch_size"],
@@ -96,18 +95,20 @@ class RetinaFaceMask(pl.LightningModule):
 
         out = self.forward(images)
 
-        loss_localization, loss_classification, loss_landmarks = self.loss(out, targets)
+        loss_localization, loss_classification, loss_landmarks, loss_properties = self.loss(out, targets)
 
         total_loss = (
             self.loss_weights["localization"] * loss_localization
             + self.loss_weights["classification"] * loss_classification
             + self.loss_weights["landmarks"] * loss_landmarks
+            + self.loss_weights["properties"] * loss_properties
         )
 
         logs = {
             "classification": loss_classification,
             "localization": loss_localization,
             "landmarks": loss_landmarks,
+            "properties": loss_properties,
             "train_loss": total_loss,
             "lr": self._get_current_lr(),
         }
@@ -127,18 +128,18 @@ class RetinaFaceMask(pl.LightningModule):
 
         out = self.forward(images)
 
-        loc, confidence, _ = out
+        location, confidence, _, _ = out
 
         confidence = F.softmax(confidence, dim=-1)
-        batch_size = loc.shape[0]
+        batch_size = location.shape[0]
 
         predictions_coco = []
 
-        scale = torch.Tensor([image_width, image_height, image_width, image_height]).to(loc.device)
+        scale = torch.Tensor([image_width, image_height, image_width, image_height]).to(location.device)
 
         for batch_id in range(batch_size):
             boxes = decode(
-                loc.data[batch_id], self.priors.to(images.device), self.hparams["test_parameters"]["variance"]
+                location.data[batch_id], self.priors.to(images.device), self.hparams["test_parameters"]["variance"]
             )
             scores = confidence[batch_id][:, 1]
 

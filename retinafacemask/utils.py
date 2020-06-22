@@ -1,6 +1,6 @@
 import re
 from pathlib import Path
-from typing import Union, Optional, Any, Dict
+from typing import Union, Optional, Any, Dict, Tuple
 
 import numpy as np
 import torch
@@ -48,5 +48,5 @@ def load_checkpoint(file_path: Union[Path, str], rename_in_layers: Optional[dict
     return checkpoint
 
 
-def random_color():
-    return np.random.randint(0, 255, size=3)
+def random_color() -> Tuple[int, ...]:
+    return tuple(int(x) for x in np.random.randint(0, 255, size=3))

@@ -3,10 +3,12 @@ import random
 from pathlib import Path
 from typing import Tuple, Optional, Dict, Any, List
 
+import albumentations as albu
 import cv2
 import numpy as np
 import torch
 from iglovikov_helper_functions.utils.image_utils import load_rgb
+from pytorch_toolbelt.utils.torch_utils import tensor_from_rgb_image
 from torch.utils import data
 
 from retinafacemask.data_augment import Preproc
@@ -51,19 +53,18 @@ def extract_target_points_and_characteristic(points: np.ndarray) -> Tuple[np.nda
 
 class WiderFaceDetection(data.Dataset):
     def __init__(
-        self,
-        label_path: str,
-        image_path: str,
-        preproc: Optional[Preproc] = None,
-        add_masks_prob: Optional[float] = None,
+        self, label_path: str, image_path: str, image_size: int, add_masks_prob: Optional[float] = None
     ) -> None:
         self.add_mask_prob = add_masks_prob
 
-        self.preproc = preproc
+        self.preproc = Preproc(img_dim=image_size, rgb_means=[0.485, 0.456, 0.406])
+        self.image_size = image_size
         self.image_path = Path(image_path)
 
         with open(label_path) as f:
             self.labels = json.load(f)
+
+        self.valid_annotation_indices = np.array([0, 1, 3, 4, 6, 7, 9, 10, 12, 13])
 
     def __len__(self) -> int:
         return len(self.labels)
@@ -73,10 +74,13 @@ class WiderFaceDetection(data.Dataset):
         file_name = labels["file_name"]
         image = load_rgb(self.image_path / file_name)
 
-        annotations = np.zeros((0, 15))
+        # annotations will have the format
+        # 4: box, 10 landmarks, 1: landmarks / no landmarks, 1: mask / no_mask
+
+        annotations = np.zeros((0, 16))
 
         for label in labels["annotations"]:
-            annotation = np.zeros((1, 15))
+            annotation = np.zeros((1, 16))
             # bbox
             annotation[0, 0] = label["x_min"]
             annotation[0, 1] = label["y_min"]
@@ -84,36 +88,39 @@ class WiderFaceDetection(data.Dataset):
             annotation[0, 3] = label["y_min"] + label["height"]
 
             if label["landmarks"]:
-                landmarks = label["landmarks"]
+                landmarks = np.array(label["landmarks"])
                 # landmarks
-                annotation[0, 4] = landmarks[0]  # l0_x
-                annotation[0, 5] = landmarks[1]  # l0_y
-                annotation[0, 6] = landmarks[3]  # l1_x
-                annotation[0, 7] = landmarks[4]  # l1_y
-                annotation[0, 8] = landmarks[6]  # l2_x
-                annotation[0, 9] = landmarks[7]  # l2_y
-                annotation[0, 10] = landmarks[9]  # l3_x
-                annotation[0, 11] = landmarks[10]  # l3_y
-                annotation[0, 12] = landmarks[12]  # l4_x
-                annotation[0, 13] = landmarks[13]  # l4_y
+                annotation[0, 4:14] = landmarks[self.valid_annotation_indices]
                 if annotation[0, 4] < 0:
                     annotation[0, 14] = -1
                 else:
                     annotation[0, 14] = 1
 
-            annotations = np.append(annotations, annotation, axis=0)
-
-            if "dlib_landmarks" in label and self.add_mask_prob is not None and self.add_mask_prob < random.random():
+            if "dlib_landmarks" in label and self.add_mask_prob is not None and random.random() < self.add_mask_prob:
                 points = label["dlib_landmarks"]
                 target_points, _, _ = extract_target_points_and_characteristic(np.array(points).astype(np.int32))
                 image = cv2.fillPoly(image, [target_points], color=random_color())
+                annotation[0, 15] = 1
+            else:
+                annotation[0, 15] = 0
+
+            annotations = np.append(annotations, annotation, axis=0)
 
         target = np.array(annotations)
-        if self.preproc is not None:
-            image, target = self.preproc(image, target)
+
+        image, target = self.preproc(image, target)
+
+        image = albu.Compose(
+            [
+                albu.RandomBrightnessContrast(brightness_limit=0.125, contrast_limit=(0.5, 1.5), p=0.5),
+                albu.HueSaturationValue(hue_shift_limit=18, val_shift_limit=0, p=0.5),
+                albu.Resize(height=self.image_size, width=self.image_size, p=1),
+                albu.Normalize(p=1),
+            ]
+        )(image=image)["image"]
 
         return {
-            "image": torch.from_numpy(image).float(),
+            "image": tensor_from_rgb_image(image),
             "annotation": target.astype(np.float32),
             "file_name": file_name,
         }
